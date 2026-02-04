@@ -12,9 +12,10 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo '📥 Cloning repository...'
-                    git branch: 'main',
-                        credentialsId: 'github-credentials',
-                        url: 'https://github.com/votre-username/votre-repo-laravel.git'            }
+                git branch: 'main',
+                    credentialsId: 'github-credentials',
+                    url: 'https://github.com/makhmadane/laravel_ci_id.git'
+            }
         }
 
         stage('Build Docker Image') {
