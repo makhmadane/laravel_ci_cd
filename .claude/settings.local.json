@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\laragon\\\\www\\\\laravel-cd-ci\\\\app\\\\Console\")",
+      "Bash(dir \"C:\\\\laragon\\\\www\\\\laravel-cd-ci\\\\database\")"
+    ]
+  }
+}
