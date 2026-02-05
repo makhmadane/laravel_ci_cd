@@ -9,6 +9,7 @@ class TypeController extends Controller
 {
     public function index()
     {
+
         $types = Type::withCount('assurances')->latest()->paginate(10);
 
         return view('types.index', compact('types'));
