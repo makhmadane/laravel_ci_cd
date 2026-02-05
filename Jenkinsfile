@@ -14,7 +14,7 @@ pipeline {
                 echo '📥 Cloning repository...'
                 git branch: 'main',
                     credentialsId: 'github-credentials',
-                    url: 'https://github.com/makhmadane/laravel_ci_id.git'
+                    url: 'https://github.com/makhmadane/laravel_ci_cd.git'
             }
         }
 
