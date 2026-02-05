@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        APP_NAME = "laravel-cd-ci"
         IMAGE_NAME = "laravel-cd-ci-image"
         CONTAINER_NAME = "laravel-cd-ci-container"
     }
@@ -10,30 +11,17 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo '📥 Checkout du code...'
+                echo '📥 Cloning repository...'
                 git branch: 'main',
                     credentialsId: 'github-credentials',
                     url: 'https://github.com/makhmadane/laravel_ci_cd.git'
             }
         }
-
-        stage('Install deps / setup') {
-            steps {
-                echo '📦 Installation des dépendances Laravel...'
-                sh '''
-                composer install --no-interaction --prefer-dist
-                cp .env.example .env || true
-                php artisan key:generate
-                php artisan config:clear
-                '''
-            }
-        }
-
         stage('Run Tests') {
             steps {
                 echo '🧪 Exécution des tests...'
                 sh '''
-                php artisan test
+                docker exec $CONTAINER_NAME php artisan test
                 '''
             }
         }
@@ -68,24 +56,42 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Run Container') {
             steps {
-                echo '🚀 Déploiement du container...'
+                echo '🚀 Lancement du container...'
                 sh '''
                 docker rm -f $CONTAINER_NAME || true
                 docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME
                 '''
             }
         }
+
+        stage('Laravel Setup') {
+            steps {
+                echo '⚙️ Configuration Laravel...'
+                sh '''
+                docker exec $CONTAINER_NAME cp .env.example .env || true
+                docker exec $CONTAINER_NAME php artisan key:generate
+                docker exec $CONTAINER_NAME php artisan config:clear
+                '''
+            }
+        }
+
     }
 
     post {
+        always {
+            sh '''
+            docker logs $CONTAINER_NAME || true
+            '''
+        }
+
         success {
-            echo '✅ Pipeline exécuté avec succès (Quality Gate respecté)'
+            echo "✅ Pipeline aligné et Quality Gate respecté"
         }
 
         failure {
-            echo '❌ Pipeline échoué (tests ou Quality Gate KO)'
+            echo "❌ Pipeline bloqué (tests ou Quality Gate KO)"
         }
     }
 }
