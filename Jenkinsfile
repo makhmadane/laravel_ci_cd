@@ -6,6 +6,9 @@ pipeline {
         IMAGE_NAME = "khadimlo1996/laravel-cd-ci-image"
         CONTAINER_NAME = "laravel-cd-ci-container"
         IMAGE_TAG = "${BUILD_NUMBER}"
+        NEXUS_HOST = "localhost"
+        NEXUS_PORT = "8083"
+        FULL_IMAGE = "${NEXUS_HOST}:${NEXUS_PORT}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
 
     stages {
@@ -97,6 +100,29 @@ pipeline {
                 sh """
                 docker push $IMAGE_NAME:$IMAGE_TAG
                 """
+            }
+        }
+        stage('Login to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-docker-creds',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh '''
+                    echo "$NEXUS_PASS" | docker login $NEXUS_HOST:$NEXUS_PORT \
+                      -u "$NEXUS_USER" --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Tag & Push to Nexus') {
+            steps {
+                sh '''
+                docker tag $IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE
+                docker push $FULL_IMAGE
+                '''
             }
         }
     }
