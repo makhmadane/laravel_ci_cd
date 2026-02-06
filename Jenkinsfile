@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         APP_NAME = "laravel-cd-ci"
-        IMAGE_NAME = "laravel-cd-ci-image"
+        IMAGE_NAME = "khadimlo1996/laravel-cd-ci-image"
         CONTAINER_NAME = "laravel-cd-ci-container"
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -20,9 +21,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Build image Docker...'
-                sh '''
-                docker build -t $IMAGE_NAME .
-                '''
+                sh """
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                """
             }
         }
 
@@ -31,7 +32,7 @@ pipeline {
                 echo '🚀 Lancement du container...'
                 sh '''
                 docker rm -f $CONTAINER_NAME || true
-                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME
+                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME:$IMAGE_TAG
                 '''
             }
         }
@@ -77,12 +78,34 @@ pipeline {
             }
         }
 
+        stage('Login Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    """
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh """
+                docker push $IMAGE_NAME:$IMAGE_TAG
+                """
+            }
+        }
     }
 
     post {
         always {
             sh '''
             docker logs $CONTAINER_NAME || true
+            docker rm -f $CONTAINER_NAME || true
             '''
         }
 
