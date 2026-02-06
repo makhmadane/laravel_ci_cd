@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = "khadimlo1996/laravel-cd-ci-image"
         CONTAINER_NAME = "laravel-cd-ci-container"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        NEXUS_HOST = "localhost"
+        NEXUS_HOST = "host.docker.internal"
         NEXUS_PORT = "8083"
         FULL_IMAGE = "${NEXUS_HOST}:${NEXUS_PORT}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
