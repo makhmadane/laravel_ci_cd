@@ -8,7 +8,8 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         NEXUS_HOST = "host.docker.internal"
         NEXUS_PORT = "8083"
-        FULL_IMAGE = "${NEXUS_HOST}:${NEXUS_PORT}/${IMAGE_NAME}:${IMAGE_TAG}"
+        REPO_NAME = "docker-hosted"
+        FULL_IMAGE = "${NEXUS_HOST}:${NEXUS_PORT}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
 
     stages {
