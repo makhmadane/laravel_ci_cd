@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "laravel-cd-ci"
         IMAGE_NAME = "khadimlo1996/laravel-cd-ci-image"
-        CONTAINER_NAME = "laravel-cd-ci-container"
+        LOCAL_IMAGE = "laravel-cd-ci-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
         NEXUS_HOST = "host.docker.internal"
         NEXUS_PORT = "5000"
@@ -16,27 +15,38 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo '📥 Cloning repository...'
-                git branch: 'main',
+                git branch: 'main2',
                     credentialsId: 'github-credentials',
                     url: 'https://github.com/makhmadane/laravel_ci_cd.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Compose') {
             steps {
-                echo '🐳 Build image Docker...'
-                sh """
-                docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                """
+                echo '🐳 Build des images via docker-compose...'
+                sh 'docker-compose build'
             }
         }
 
-        stage('Run Container') {
+        stage('Start Services') {
             steps {
-                echo '🚀 Lancement du container...'
+                echo '🚀 Lancement des services...'
                 sh '''
-                docker rm -f $CONTAINER_NAME || true
-                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME:$IMAGE_TAG
+                docker-compose down || true
+                docker-compose up -d
+                '''
+            }
+        }
+
+        stage('Wait for MySQL') {
+            steps {
+                echo '⏳ Attente que MySQL soit prêt...'
+                sh '''
+                for i in $(seq 1 30); do
+                    docker-compose exec -T mysql mysqladmin ping -h localhost -u root -proot --silent && break
+                    echo "Waiting for MySQL... ($i/30)"
+                    sleep 2
+                done
                 '''
             }
         }
@@ -45,9 +55,10 @@ pipeline {
             steps {
                 echo '⚙️ Configuration Laravel...'
                 sh '''
-                docker exec $CONTAINER_NAME cp .env.example .env || true
-                docker exec $CONTAINER_NAME php artisan key:generate
-                docker exec $CONTAINER_NAME php artisan config:clear
+                docker-compose exec -T app cp .env.example .env || true
+                docker-compose exec -T app php artisan key:generate
+                docker-compose exec -T app php artisan config:clear
+                docker-compose exec -T app php artisan migrate --force || true
                 '''
             }
         }
@@ -56,7 +67,7 @@ pipeline {
             steps {
                 echo '🧪 Exécution des tests...'
                 sh '''
-                docker exec $CONTAINER_NAME php artisan test
+                docker-compose exec -T app php artisan test
                 '''
             }
         }
@@ -96,13 +107,15 @@ pipeline {
             }
         }
 
-        stage('Push Image') {
+        stage('Tag & Push to Docker Hub') {
             steps {
                 sh """
+                docker tag $LOCAL_IMAGE:latest $IMAGE_NAME:$IMAGE_TAG
                 docker push $IMAGE_NAME:$IMAGE_TAG
                 """
             }
         }
+
         stage('Login to Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -118,11 +131,10 @@ pipeline {
             }
         }
 
-
         stage('Tag & Push to Nexus') {
             steps {
                 sh '''
-                docker tag $IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE
+                docker tag $LOCAL_IMAGE:latest $FULL_IMAGE
                 docker push $FULL_IMAGE
                 '''
             }
@@ -132,8 +144,8 @@ pipeline {
     post {
         always {
             sh '''
-            docker logs $CONTAINER_NAME || true
-            docker rm -f $CONTAINER_NAME || true
+            docker-compose logs || true
+            docker-compose down || true
             '''
         }
 
